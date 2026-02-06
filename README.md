@@ -1,64 +1,59 @@
 ﻿# YTD Optimizer para GTA V / FiveM
 
-Optimiza archivos .ytd reduciendo el tamano de texturas (hasta 74% de reduccion).
+Optimiza archivos .ytd reduciendo el tamaño de texturas (hasta 90% de reducción).
 
 ## Requisitos
 
-- Python 3.8+
+- .NET SDK 8.0+
+- Python 3.8+ (opcional, para el wrapper)
 
-## Instalacion
+## Instalación
 
 ```powershell
-# texconv.exe se descarga automaticamente si no existe
-# Si falta, descargalo de: https://github.com/microsoft/DirectXTex/releases
+# Instalar .NET SDK si no está instalado
+Invoke-WebRequest -Uri "https://dot.net/v1/dotnet-install.ps1" -OutFile "dotnet-install.ps1"
+./dotnet-install.ps1
 ```
 
 ## Uso
 
 ```powershell
-# Colocar archivos .ytd en carpeta "input"
-# Ejecutar:
-python batch_optimize.py input output -s 512
+python optimize.py <carpeta_entrada> <carpeta_salida> [tamaño_max]
 ```
-
-### Parametros
-
-| Parametro | Descripcion | Default |
-|-----------|-------------|---------|
-| input | Carpeta con .ytd originales | - |
-| output | Carpeta de salida | - |
-| -s, --size | Tamano max textura | 512 |
 
 ### Ejemplos
 
 ```powershell
-python batch_optimize.py mis_ytd optimizados -s 512   # Calidad media
-python batch_optimize.py mis_ytd optimizados -s 256   # Mas pequeno
-python batch_optimize.py mis_ytd optimizados -s 1024  # Alta calidad
+python optimize.py optimize output 512    # Calidad media (recomendado)
+python optimize.py optimize output 256    # Más pequeño, menos calidad
+python optimize.py optimize output 1024   # Alta calidad
 ```
+
+### Parámetros
+
+| Parámetro | Descripción |
+|-----------|-------------|
+| carpeta_entrada | Carpeta con archivos .ytd originales |
+| carpeta_salida | Carpeta donde guardar los .ytd optimizados |
+| tamaño_max | Tamaño máximo de textura (default: 512) |
 
 ## Resultados
 
-| Textura Original | Reduccion |
-|------------------|-----------|
-| 2048x4096 | ~97% |
-| 2048x2048 | ~91% |
-| 1024x1024 | ~65% |
+| Archivo | Original | Optimizado | Reducción |
+|---------|----------|------------|-----------|
+| catamaran.ytd | 3.9 MB | 0.4 MB | 90% |
+| skidoo800R.ytd | 0.5 MB | 0.3 MB | 52% |
 
 ## Estructura
 
 ```
-ytd_optimizer/
- batch_optimize.py   # Script principal
- extract_textures.py # Uso individual
- rebuild_ytd.py      # Uso individual
- tools/
-    texconv.exe
- README.md
+optimize_proyect/
+├── optimize.py          # Script principal
+├── optimize/            # YTDs de entrada (ejemplo)
+├── output/              # YTDs optimizados
+├── tools/
+│   ├── texconv.exe      # Herramienta de conversión
+│   ├── YtdOptimizer/    # Proyecto C# con CodeWalker.Core
+│   └── CodeWalker/      # Librería para manejo de YTD
+└── README.md
 ```
-
-## Archivos
-
-- **batch_optimize.py** - Procesa multiples YTD
-- **extract_textures.py** - Extrae texturas a DDS  
-- **rebuild_ytd.py** - Reconstruye YTD con nueva textura
