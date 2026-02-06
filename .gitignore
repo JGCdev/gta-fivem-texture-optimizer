@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Input/Output folders (user files)
+optimize/*
+output/*
+!optimize/.gitkeep
+!output/.gitkeep
+
+# Build outputs
+tools/YtdOptimizer/bin/
+tools/YtdOptimizer/obj/
+
+# CodeWalker build
+tools/codewalker/**/bin/
+tools/codewalker/**/obj/

@@ -12,7 +12,7 @@ def main():
     script_dir = Path(__file__).parent.absolute()
     
     # Find YtdOptimizer.exe
-    ytd_optimizer = script_dir / "tools" / "YtdOptimizer" / "bin" / "Release" / "net8.0" / "YtdOptimizer.exe"
+    ytd_optimizer = script_dir / "tools" / "YtdOptimizer" / "bin" / "Release" / "net7.0" / "YtdOptimizer.exe"
     dotnet_exe = Path(os.environ.get("USERPROFILE", "")) / "AppData" / "Local" / "Microsoft" / "dotnet" / "dotnet.exe"
     
     if len(sys.argv) < 3:

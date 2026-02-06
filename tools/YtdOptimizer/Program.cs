@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Diagnostics;
 using System.Text;
 using System.Xml;
@@ -11,12 +13,15 @@ namespace YtdOptimizer
     {
         static string texconvPath = "";
         static int targetSize = 512;
+        static readonly string[] SupportedExtensions = { ".ytd", ".ydd", ".ydr", ".yft" };
 
         static void Main(string[] args)
         {
             if (args.Length < 2)
             {
-                Console.WriteLine("YTD Optimizer - Optimizes GTA V texture files");
+                Console.WriteLine("Texture Optimizer - Optimizes GTA V / FiveM texture files");
+                Console.WriteLine("Supported formats: YTD, YDD, YDR, YFT");
+                Console.WriteLine();
                 Console.WriteLine("Usage: YtdOptimizer <input_folder> <output_folder> [max_size] [texconv_path]");
                 Console.WriteLine("Example: YtdOptimizer ./input ./output 512 ./texconv.exe");
                 return;
@@ -38,7 +43,6 @@ namespace YtdOptimizer
             
             if (!File.Exists(texconvPath))
             {
-                // Try relative paths
                 var possiblePaths = new[] { 
                     "texconv.exe", 
                     "tools/texconv.exe", 
@@ -66,24 +70,39 @@ namespace YtdOptimizer
 
             Directory.CreateDirectory(outputFolder);
 
-            var ytdFiles = Directory.GetFiles(inputFolder, "*.ytd");
+            // Find all supported files
+            var files = new List<string>();
+            foreach (var ext in SupportedExtensions)
+            {
+                files.AddRange(Directory.GetFiles(inputFolder, $"*{ext}"));
+            }
+
             Console.WriteLine($"\n========================================");
-            Console.WriteLine($"YTD Optimizer (CodeWalker)");
+            Console.WriteLine($"Texture Optimizer (CodeWalker)");
             Console.WriteLine($"========================================");
             Console.WriteLine($"Input: {inputFolder}");
             Console.WriteLine($"Output: {outputFolder}");
             Console.WriteLine($"Target size: {targetSize}x{targetSize}");
-            Console.WriteLine($"Files: {ytdFiles.Length}");
+            Console.WriteLine($"Files: {files.Count} ({string.Join(", ", SupportedExtensions)})");
             Console.WriteLine($"========================================\n");
 
             int processed = 0, skipped = 0, errors = 0;
             long originalBytes = 0, optimizedBytes = 0;
 
-            foreach (var ytdPath in ytdFiles)
+            foreach (var filePath in files)
             {
                 try
                 {
-                    var result = ProcessYtd(ytdPath, outputFolder);
+                    var ext = Path.GetExtension(filePath).ToLowerInvariant();
+                    (string status, string reason, long originalSize, long optimizedSize, int texturesChanged) result = ext switch
+                    {
+                        ".ytd" => ProcessYtd(filePath, outputFolder),
+                        ".ydd" => ProcessYdd(filePath, outputFolder),
+                        ".ydr" => ProcessYdr(filePath, outputFolder),
+                        ".yft" => ProcessYft(filePath, outputFolder),
+                        _ => ("skipped", "Unknown format", 0L, 0L, 0)
+                    };
+
                     originalBytes += result.originalSize;
                     optimizedBytes += result.optimizedSize;
 
@@ -93,23 +112,23 @@ namespace YtdOptimizer
                         double reduction = result.originalSize > 0 
                             ? (1.0 - (double)result.optimizedSize / result.originalSize) * 100 
                             : 0;
-                        Console.WriteLine($"[OK] {Path.GetFileName(ytdPath)} - {result.texturesChanged} textures, {reduction:F1}% smaller");
+                        Console.WriteLine($"[OK] {Path.GetFileName(filePath)} - {result.texturesChanged} textures, {reduction:F1}% smaller");
                     }
                     else if (result.status == "skipped")
                     {
                         skipped++;
-                        Console.WriteLine($"[SKIP] {Path.GetFileName(ytdPath)} - {result.reason}");
+                        Console.WriteLine($"[SKIP] {Path.GetFileName(filePath)} - {result.reason}");
                     }
                     else
                     {
                         errors++;
-                        Console.WriteLine($"[ERR] {Path.GetFileName(ytdPath)} - {result.reason}");
+                        Console.WriteLine($"[ERR] {Path.GetFileName(filePath)} - {result.reason}");
                     }
                 }
                 catch (Exception ex)
                 {
                     errors++;
-                    Console.WriteLine($"[ERR] {Path.GetFileName(ytdPath)} - {ex.Message}");
+                    Console.WriteLine($"[ERR] {Path.GetFileName(filePath)} - {ex.Message}");
                 }
             }
 
@@ -133,15 +152,10 @@ namespace YtdOptimizer
             byte[] originalData = File.ReadAllBytes(inputPath);
             long originalSize = originalData.Length;
 
-            // Load YTD
             var ytd = new YtdFile();
-            try
-            {
-                ytd.Load(originalData);
-            }
+            try { ytd.Load(originalData); }
             catch (Exception ex)
             {
-                // Copy original if can't load
                 File.Copy(inputPath, Path.Combine(outputFolder, Path.GetFileName(inputPath)), true);
                 return ("error", $"Load failed: {ex.Message}", originalSize, originalSize, 0);
             }
@@ -152,57 +166,204 @@ namespace YtdOptimizer
                 return ("skipped", "No textures", originalSize, originalSize, 0);
             }
 
-            var textures = ytd.TextureDict.Textures.data_items;
-            
-            // Check if any texture needs resizing
-            bool needsResize = false;
-            foreach (var tex in textures)
-            {
-                if (tex != null && (tex.Width > targetSize || tex.Height > targetSize))
-                {
-                    needsResize = true;
-                    break;
-                }
-            }
-
+            bool needsResize = ytd.TextureDict.Textures.data_items.Any(t => t != null && (t.Width > targetSize || t.Height > targetSize));
             if (!needsResize)
             {
                 File.Copy(inputPath, Path.Combine(outputFolder, Path.GetFileName(inputPath)), true);
                 return ("skipped", "Already optimized", originalSize, originalSize, 0);
             }
 
-            // Create temp folder for DDS files
             string baseName = Path.GetFileNameWithoutExtension(inputPath);
-            string tempFolder = Path.Combine(Path.GetTempPath(), $"ytd_opt_{baseName}_{Guid.NewGuid():N}");
+            string tempFolder = Path.Combine(Path.GetTempPath(), $"opt_{baseName}_{Guid.NewGuid():N}");
             Directory.CreateDirectory(tempFolder);
 
             try
             {
-                // Export to XML + DDS
                 string xml = YtdXml.GetXml(ytd, tempFolder);
                 string xmlPath = Path.Combine(tempFolder, $"{baseName}.xml");
                 File.WriteAllText(xmlPath, xml);
 
-                // Resize DDS files
                 int changed = ResizeDdsFiles(tempFolder);
 
-                // Import back from XML + DDS
                 string modifiedXml = File.ReadAllText(xmlPath);
                 var newYtd = XmlYtd.GetYtd(modifiedXml, tempFolder);
                 newYtd.Name = ytd.Name;
 
-                // Save
                 byte[] newData = newYtd.Save();
-                string outputPath = Path.Combine(outputFolder, Path.GetFileName(inputPath));
-                File.WriteAllBytes(outputPath, newData);
+                File.WriteAllBytes(Path.Combine(outputFolder, Path.GetFileName(inputPath)), newData);
 
                 return ("optimized", "", originalSize, newData.Length, changed);
             }
-            finally
+            finally { try { Directory.Delete(tempFolder, true); } catch { } }
+        }
+
+        static (string status, string reason, long originalSize, long optimizedSize, int texturesChanged) ProcessYdd(string inputPath, string outputFolder)
+        {
+            byte[] originalData = File.ReadAllBytes(inputPath);
+            long originalSize = originalData.Length;
+
+            var ydd = new YddFile();
+            try { ydd.Load(originalData); }
+            catch (Exception ex)
             {
-                // Cleanup temp
-                try { Directory.Delete(tempFolder, true); } catch { }
+                File.Copy(inputPath, Path.Combine(outputFolder, Path.GetFileName(inputPath)), true);
+                return ("error", $"Load failed: {ex.Message}", originalSize, originalSize, 0);
             }
+
+            string baseName = Path.GetFileNameWithoutExtension(inputPath);
+            string tempFolder = Path.Combine(Path.GetTempPath(), $"opt_{baseName}_{Guid.NewGuid():N}");
+            Directory.CreateDirectory(tempFolder);
+
+            try
+            {
+                string xml = YddXml.GetXml(ydd, tempFolder);
+                string xmlPath = Path.Combine(tempFolder, $"{baseName}.xml");
+                File.WriteAllText(xmlPath, xml);
+
+                var ddsFiles = Directory.GetFiles(tempFolder, "*.dds");
+                if (ddsFiles.Length == 0)
+                {
+                    File.Copy(inputPath, Path.Combine(outputFolder, Path.GetFileName(inputPath)), true);
+                    return ("skipped", "No embedded textures", originalSize, originalSize, 0);
+                }
+
+                bool needsResize = ddsFiles.Any(f => NeedsResize(f));
+                if (!needsResize)
+                {
+                    File.Copy(inputPath, Path.Combine(outputFolder, Path.GetFileName(inputPath)), true);
+                    return ("skipped", "Already optimized", originalSize, originalSize, 0);
+                }
+
+                int changed = ResizeDdsFiles(tempFolder);
+
+                string modifiedXml = File.ReadAllText(xmlPath);
+                var newYdd = XmlYdd.GetYdd(modifiedXml, tempFolder);
+                newYdd.Name = ydd.Name;
+
+                byte[] newData = newYdd.Save();
+                File.WriteAllBytes(Path.Combine(outputFolder, Path.GetFileName(inputPath)), newData);
+
+                return ("optimized", "", originalSize, newData.Length, changed);
+            }
+            finally { try { Directory.Delete(tempFolder, true); } catch { } }
+        }
+
+        static (string status, string reason, long originalSize, long optimizedSize, int texturesChanged) ProcessYdr(string inputPath, string outputFolder)
+        {
+            byte[] originalData = File.ReadAllBytes(inputPath);
+            long originalSize = originalData.Length;
+
+            var ydr = new YdrFile();
+            try { ydr.Load(originalData); }
+            catch (Exception ex)
+            {
+                File.Copy(inputPath, Path.Combine(outputFolder, Path.GetFileName(inputPath)), true);
+                return ("error", $"Load failed: {ex.Message}", originalSize, originalSize, 0);
+            }
+
+            string baseName = Path.GetFileNameWithoutExtension(inputPath);
+            string tempFolder = Path.Combine(Path.GetTempPath(), $"opt_{baseName}_{Guid.NewGuid():N}");
+            Directory.CreateDirectory(tempFolder);
+
+            try
+            {
+                string xml = YdrXml.GetXml(ydr, tempFolder);
+                string xmlPath = Path.Combine(tempFolder, $"{baseName}.xml");
+                File.WriteAllText(xmlPath, xml);
+
+                var ddsFiles = Directory.GetFiles(tempFolder, "*.dds");
+                if (ddsFiles.Length == 0)
+                {
+                    File.Copy(inputPath, Path.Combine(outputFolder, Path.GetFileName(inputPath)), true);
+                    return ("skipped", "No embedded textures", originalSize, originalSize, 0);
+                }
+
+                bool needsResize = ddsFiles.Any(f => NeedsResize(f));
+                if (!needsResize)
+                {
+                    File.Copy(inputPath, Path.Combine(outputFolder, Path.GetFileName(inputPath)), true);
+                    return ("skipped", "Already optimized", originalSize, originalSize, 0);
+                }
+
+                int changed = ResizeDdsFiles(tempFolder);
+
+                string modifiedXml = File.ReadAllText(xmlPath);
+                var newYdr = XmlYdr.GetYdr(modifiedXml, tempFolder);
+                newYdr.Name = ydr.Name;
+
+                byte[] newData = newYdr.Save();
+                File.WriteAllBytes(Path.Combine(outputFolder, Path.GetFileName(inputPath)), newData);
+
+                return ("optimized", "", originalSize, newData.Length, changed);
+            }
+            finally { try { Directory.Delete(tempFolder, true); } catch { } }
+        }
+
+        static (string status, string reason, long originalSize, long optimizedSize, int texturesChanged) ProcessYft(string inputPath, string outputFolder)
+        {
+            byte[] originalData = File.ReadAllBytes(inputPath);
+            long originalSize = originalData.Length;
+
+            var yft = new YftFile();
+            try { yft.Load(originalData); }
+            catch (Exception ex)
+            {
+                File.Copy(inputPath, Path.Combine(outputFolder, Path.GetFileName(inputPath)), true);
+                return ("error", $"Load failed: {ex.Message}", originalSize, originalSize, 0);
+            }
+
+            string baseName = Path.GetFileNameWithoutExtension(inputPath);
+            string tempFolder = Path.Combine(Path.GetTempPath(), $"opt_{baseName}_{Guid.NewGuid():N}");
+            Directory.CreateDirectory(tempFolder);
+
+            try
+            {
+                string xml = YftXml.GetXml(yft, tempFolder);
+                string xmlPath = Path.Combine(tempFolder, $"{baseName}.xml");
+                File.WriteAllText(xmlPath, xml);
+
+                var ddsFiles = Directory.GetFiles(tempFolder, "*.dds");
+                if (ddsFiles.Length == 0)
+                {
+                    File.Copy(inputPath, Path.Combine(outputFolder, Path.GetFileName(inputPath)), true);
+                    return ("skipped", "No embedded textures", originalSize, originalSize, 0);
+                }
+
+                bool needsResize = ddsFiles.Any(f => NeedsResize(f));
+                if (!needsResize)
+                {
+                    File.Copy(inputPath, Path.Combine(outputFolder, Path.GetFileName(inputPath)), true);
+                    return ("skipped", "Already optimized", originalSize, originalSize, 0);
+                }
+
+                int changed = ResizeDdsFiles(tempFolder);
+
+                string modifiedXml = File.ReadAllText(xmlPath);
+                var newYft = XmlYft.GetYft(modifiedXml, tempFolder);
+                newYft.Name = yft.Name;
+
+                byte[] newData = newYft.Save();
+                File.WriteAllBytes(Path.Combine(outputFolder, Path.GetFileName(inputPath)), newData);
+
+                return ("optimized", "", originalSize, newData.Length, changed);
+            }
+            finally { try { Directory.Delete(tempFolder, true); } catch { } }
+        }
+
+        static bool NeedsResize(string ddsPath)
+        {
+            try
+            {
+                byte[] header = new byte[128];
+                using (var fs = File.OpenRead(ddsPath))
+                {
+                    fs.Read(header, 0, 128);
+                }
+                int height = BitConverter.ToInt32(header, 12);
+                int width = BitConverter.ToInt32(header, 16);
+                return width > targetSize || height > targetSize;
+            }
+            catch { return false; }
         }
 
         static int ResizeDdsFiles(string folder)
@@ -214,29 +375,24 @@ namespace YtdOptimizer
             {
                 try
                 {
-                    // Read DDS header to get dimensions
                     byte[] header = new byte[128];
                     using (var fs = File.OpenRead(ddsPath))
                     {
                         fs.Read(header, 0, 128);
                     }
-                    // File is now closed
 
                     int height = BitConverter.ToInt32(header, 12);
                     int width = BitConverter.ToInt32(header, 16);
 
                     if (width > targetSize || height > targetSize)
                     {
-                        // Calculate new size
                         double ratio = Math.Min((double)targetSize / width, (double)targetSize / height);
                         int newW = Math.Max(4, (int)(width * ratio));
                         int newH = Math.Max(4, (int)(height * ratio));
                         
-                        // Round to power of 2
                         newW = (int)Math.Pow(2, Math.Ceiling(Math.Log(newW) / Math.Log(2)));
                         newH = (int)Math.Pow(2, Math.Ceiling(Math.Log(newH) / Math.Log(2)));
 
-                        // Determine format
                         uint fourcc = BitConverter.ToUInt32(header, 84);
                         string format = fourcc == 0x31545844 ? "BC1_UNORM" : "BC3_UNORM";
 
@@ -244,7 +400,6 @@ namespace YtdOptimizer
 
                         Console.WriteLine($"    Resizing: {Path.GetFileName(ddsPath)} {width}x{height} -> {newW}x{newH}");
 
-                        // Run texconv
                         var psi = new ProcessStartInfo
                         {
                             FileName = texconvPath,

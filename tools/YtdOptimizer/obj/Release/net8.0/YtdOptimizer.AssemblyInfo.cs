@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("YtdOptimizer")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+f3b6fb31f19895b0ad91a722fce2489a84227f84")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3c5912bdef58a2ef8c428d27e128f0a94db7207d")]
 [assembly: System.Reflection.AssemblyProductAttribute("YtdOptimizer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("YtdOptimizer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

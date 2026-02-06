@@ -1,11 +1,15 @@
 {
   "version": 2,
-  "dgSpecHash": "lX+uuAIXGuU=",
+  "dgSpecHash": "GjItrTr/tBc=",
   "success": true,
   "projectFilePath": "C:\\Users\\jegic\\Desktop\\optimize_proyect\\tools\\YtdOptimizer\\YtdOptimizer.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\jegic\\.nuget\\packages\\sharpdx\\4.2.0\\sharpdx.4.2.0.nupkg.sha512",
-    "C:\\Users\\jegic\\.nuget\\packages\\sharpdx.mathematics\\4.2.0\\sharpdx.mathematics.4.2.0.nupkg.sha512"
+    "C:\\Users\\jegic\\.nuget\\packages\\sharpdx.mathematics\\4.2.0\\sharpdx.mathematics.4.2.0.nupkg.sha512",
+    "C:\\Users\\jegic\\.nuget\\packages\\microsoft.netcore.app.ref\\7.0.20\\microsoft.netcore.app.ref.7.0.20.nupkg.sha512",
+    "C:\\Users\\jegic\\.nuget\\packages\\microsoft.windowsdesktop.app.ref\\7.0.20\\microsoft.windowsdesktop.app.ref.7.0.20.nupkg.sha512",
+    "C:\\Users\\jegic\\.nuget\\packages\\microsoft.aspnetcore.app.ref\\7.0.20\\microsoft.aspnetcore.app.ref.7.0.20.nupkg.sha512",
+    "C:\\Users\\jegic\\.nuget\\packages\\microsoft.netcore.app.host.win-x64\\7.0.20\\microsoft.netcore.app.host.win-x64.7.0.20.nupkg.sha512"
   ],
   "logs": []
 }

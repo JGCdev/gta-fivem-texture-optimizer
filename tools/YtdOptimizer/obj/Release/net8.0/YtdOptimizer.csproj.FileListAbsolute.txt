@@ -19,3 +19,4 @@ C:\Users\jegic\Desktop\optimize_proyect\tools\YtdOptimizer\obj\Release\net8.0\re
 C:\Users\jegic\Desktop\optimize_proyect\tools\YtdOptimizer\obj\Release\net8.0\YtdOptimizer.pdb
 C:\Users\jegic\Desktop\optimize_proyect\tools\YtdOptimizer\obj\Release\net8.0\YtdOptimizer.genruntimeconfig.cache
 C:\Users\jegic\Desktop\optimize_proyect\tools\YtdOptimizer\obj\Release\net8.0\ref\YtdOptimizer.dll
+C:\Users\jegic\Desktop\optimize_proyect\tools\YtdOptimizer\bin\Release\net8.0\CodeWalker.Core.dll
