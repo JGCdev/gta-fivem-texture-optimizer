@@ -1,137 +1,137 @@
 ﻿# FiveM Texture Optimizer
 
-🎨 Herramienta con interfaz gráfica para optimizar texturas de GTA V / FiveM. Reduce el tamaño de archivos hasta un 90%.
+🎨 GUI tool to optimize GTA V / FiveM textures. Reduce file sizes by up to 90%.
 
 ![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4) ![Windows](https://img.shields.io/badge/Windows-10%2F11-0078D6) ![License](https://img.shields.io/badge/License-MIT-green)
 
-## Características
+## Features
 
-- ✅ Interfaz gráfica moderna con tema oscuro
-- ✅ Selección individual de archivos a optimizar
-- ✅ Vista previa de texturas con dimensiones y formato
-- ✅ Configuración de tamaño máximo (128-2048px)
-- ✅ Log en tiempo real del proceso
-- ✅ Estadísticas de reducción de tamaño
+- ✅ Modern GUI with dark theme
+- ✅ Individual file selection for optimization
+- ✅ Texture preview with dimensions and format
+- ✅ Configurable maximum size (128-2048px)
+- ✅ Real-time process log
+- ✅ Size reduction statistics
 
-## Formatos Soportados
+## Supported Formats
 
-| Formato | Descripción | Soporte |
-|---------|-------------|---------|
-| **YTD** | Texture Dictionary | ✅ Completo |
-| **YDD** | Drawable Dictionary | ✅ Texturas embebidas |
-| **YDR** | Drawable | ✅ Texturas embebidas |
-| **YFT** | Fragment | ✅ Texturas embebidas |
+| Format | Description | Support |
+|--------|-------------|---------|
+| **YTD** | Texture Dictionary | ✅ Full |
+| **YDD** | Drawable Dictionary | ✅ Embedded textures |
+| **YDR** | Drawable | ✅ Embedded textures |
+| **YFT** | Fragment | ✅ Embedded textures |
 
-> **Nota:** Los archivos YFT suelen almacenar texturas en un archivo `.ytd` separado con el mismo nombre. Si un YFT muestra "Sin texturas embebidas", optimiza el YTD asociado.
+> **Note:** YFT files usually store textures in a separate `.ytd` file with the same name. If a YFT shows "No embedded textures", optimize the associated YTD instead.
 
-## Requisitos
+## Requirements
 
 - Windows 10/11 (64-bit)
-- El ejecutable incluye todo lo necesario (.NET 8 runtime incluido)
+- The executable includes everything needed (.NET 8 runtime bundled)
 
-## Instalación
+## Installation
 
-### Opción 1: Usar ejecutable (Recomendado)
+### Option 1: Use the executable (Recommended)
 
-1. Descarga la carpeta `dist/`
-2. Ejecuta `FiveM Texture Optimizer.exe`
-3. ¡Listo!
+1. Download the `dist/` folder
+2. Run `FiveM Texture Optimizer.exe`
+3. Done!
 
-### Opción 2: Compilar desde código
+### Option 2: Build from source
 
-Ver sección [Desarrollo](#desarrollo).
+See the [Development](#development) section.
 
-## Uso
+## Usage
 
-### Interfaz Gráfica
+### Graphical Interface
 
-1. **Seleccionar Carpeta Entrada** - Carpeta con archivos YTD/YDD/YDR/YFT
-2. **Seleccionar Carpeta Salida** - Donde se guardarán los optimizados
-3. **Escanear** - Analiza y lista todos los archivos
-4. **Seleccionar** - Marca/desmarca archivos individuales
-5. **Configurar tamaño** - Elige tamaño máximo (128-2048px)
-6. **Optimizar** - Procesa los archivos seleccionados
+1. **Select Input Folder** - Folder containing YTD/YDD/YDR/YFT files
+2. **Select Output Folder** - Where optimized files will be saved
+3. **Scan** - Analyzes and lists all files
+4. **Select** - Check/uncheck individual files
+5. **Configure size** - Choose maximum size (128-2048px)
+6. **Optimize** - Processes the selected files
 
-### Línea de Comandos (Opcional)
+### Command Line (Optional)
 
 ```powershell
-python optimize.py <carpeta_entrada> <carpeta_salida> [tamaño_max]
+python optimize.py <input_folder> <output_folder> [max_size]
 ```
 
 ```powershell
-# Ejemplo: texturas máximo 512px
+# Example: textures max 512px
 python optimize.py input output 512
 ```
 
-## Tamaños Recomendados
+## Recommended Sizes
 
-| Tamaño | Uso recomendado |
-|--------|-----------------|
-| 128px | Mínimo, baja calidad |
-| 256px | Servidores con muchos jugadores |
-| **512px** | **Balance calidad/rendimiento** |
-| 1024px | Alta calidad |
-| 2048px | Máxima calidad |
+| Size | Recommended use |
+|------|-----------------|
+| 128px | Minimum, low quality |
+| 256px | Servers with many players |
+| **512px** | **Quality/performance balance** |
+| 1024px | High quality |
+| 2048px | Maximum quality |
 
-## Resultados Típicos
+## Typical Results
 
-| Archivo | Original | Optimizado | Reducción |
-|---------|----------|------------|-----------|
+| File | Original | Optimized | Reduction |
+|------|----------|-----------|-----------|
 | catamaran.ytd | 3.9 MB | 0.4 MB | 90% |
 | interior_club.ytd | 5.2 MB | 0.8 MB | 85% |
 | vehicle_hd.ytd | 2.1 MB | 0.5 MB | 76% |
 
-## Limitaciones
+## Limitations
 
-- ❌ **Archivos FXA** (assets compilados de FiveM con magic `FXAP`) no soportados - usa los archivos originales sin compilar
-- ❌ **Archivos corruptos** - se copian sin modificar al destino
+- ❌ **FXA files** (compiled FiveM assets with `FXAP` magic) not supported - use the original uncompiled files instead
+- ❌ **Corrupt files** - copied unmodified to the destination
 
-## Desarrollo
+## Development
 
-### Requisitos para compilar
+### Build requirements
 
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 - Windows 10/11
 
-### Compilar la aplicación
+### Build the application
 
 ```powershell
-# Navegar al proyecto GUI
+# Navigate to the GUI project
 cd tools/YtdOptimizerGUI
 
-# Compilar y publicar en dist/
+# Build and publish to dist/
 dotnet publish -c Release -o ../../dist
 ```
 
-### Estructura del Proyecto
+### Project Structure
 
 ```
-├── dist/                    # Ejecutables distribuibles
-│   ├── FiveM Texture Optimizer.exe  # Aplicación GUI
-│   └── texconv.exe          # Conversor de texturas
+├── dist/                    # Distributable executables
+│   ├── FiveM Texture Optimizer.exe  # GUI application
+│   └── texconv.exe          # Texture converter
 ├── tools/
 │   ├── texconv.exe          # Microsoft DirectXTex
-│   ├── YtdOptimizerGUI/     # Código fuente GUI (C# WinForms)
-│   ├── YtdOptimizer/        # Herramienta CLI (C#)
-│   └── codewalker/          # Librería CodeWalker.Core
-├── optimize.py              # Script wrapper Python (opcional)
+│   ├── YtdOptimizerGUI/     # GUI source code (C# WinForms)
+│   ├── YtdOptimizer/        # CLI tool (C#)
+│   └── codewalker/          # CodeWalker.Core library
+├── optimize.py              # Python wrapper script (optional)
 └── README.md
 ```
 
-### Archivos del proyecto GUI
+### GUI Project Files
 
-| Archivo | Descripción |
-|---------|-------------|
-| `YtdOptimizerGUI.csproj` | Configuración del proyecto |
-| `Program.cs` | Punto de entrada |
-| `MainForm.cs` | Formulario principal y lógica |
-| `Models.cs` | Clases de datos |
+| File | Description |
+|------|-------------|
+| `YtdOptimizerGUI.csproj` | Project configuration |
+| `Program.cs` | Entry point |
+| `MainForm.cs` | Main form and logic |
+| `Models.cs` | Data classes |
 
-## Créditos
+## Credits
 
-- [CodeWalker](https://github.com/dexyfex/CodeWalker) - Librería para formatos GTA V
-- [DirectXTex](https://github.com/microsoft/DirectXTex) - texconv.exe para procesamiento DDS
+- [CodeWalker](https://github.com/dexyfex/CodeWalker) - Library for GTA V formats
+- [DirectXTex](https://github.com/microsoft/DirectXTex) - texconv.exe for DDS processing
 
-## Licencia
+## License
 
 MIT
