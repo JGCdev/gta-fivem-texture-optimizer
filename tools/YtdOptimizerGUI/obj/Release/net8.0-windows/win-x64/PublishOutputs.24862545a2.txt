@@ -1,0 +1,5 @@
+C:\Users\jegic\Desktop\optimize_proyect\tools\YtdOptimizerGUI\bin\Release\net8.0-windows\win-x64\publish\FiveM Texture Optimizer.pdb
+C:\Users\jegic\Desktop\optimize_proyect\tools\YtdOptimizerGUI\bin\Release\net8.0-windows\win-x64\publish\ShadersGen9Conversion.xml
+C:\Users\jegic\Desktop\optimize_proyect\tools\YtdOptimizerGUI\bin\Release\net8.0-windows\win-x64\publish\strings.txt
+C:\Users\jegic\Desktop\optimize_proyect\tools\YtdOptimizerGUI\bin\Release\net8.0-windows\win-x64\publish\CodeWalker.Core.pdb
+C:\Users\jegic\Desktop\optimize_proyect\tools\YtdOptimizerGUI\bin\Release\net8.0-windows\win-x64\publish\FiveM Texture Optimizer.exe

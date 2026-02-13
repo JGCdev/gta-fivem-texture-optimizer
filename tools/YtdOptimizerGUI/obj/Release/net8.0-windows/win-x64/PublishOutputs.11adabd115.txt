@@ -1,0 +1,5 @@
+c:\Users\jegic\Desktop\optimize_proyect\dist\FiveM Texture Optimizer.pdb
+c:\Users\jegic\Desktop\optimize_proyect\dist\ShadersGen9Conversion.xml
+c:\Users\jegic\Desktop\optimize_proyect\dist\strings.txt
+c:\Users\jegic\Desktop\optimize_proyect\dist\CodeWalker.Core.pdb
+c:\Users\jegic\Desktop\optimize_proyect\dist\FiveM Texture Optimizer.exe
