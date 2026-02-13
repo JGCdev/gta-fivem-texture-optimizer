@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyDescriptionAttribute("Optimize GTA V / FiveM texture files (YTD, YDD, YDR, YFT)")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+660b93e634100f83c709f7dcdb039110b23c0227")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5124d411ae873b54fefdd881bde6f44b2cc0e0d6")]
 [assembly: System.Reflection.AssemblyProductAttribute("FiveM Texture Optimizer")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FiveM Texture Optimizer")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

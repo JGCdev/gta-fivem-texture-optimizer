@@ -4,11 +4,14 @@ using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using CodeWalker.GameFiles;
+using CodeWalker.Utils;
 
 namespace YtdOptimizerGUI
 {
@@ -29,6 +32,7 @@ namespace YtdOptimizerGUI
 
         // Controls
         private Panel topPanel = null!;
+        private Button btnSelectFiles = null!;
         private Button btnSelectFolder = null!;
         private Button btnScan = null!;
         private Button btnSelectOutput = null!;
@@ -45,6 +49,10 @@ namespace YtdOptimizerGUI
         private Label lblStats = null!;
         private RichTextBox txtLog = null!;
         private SplitContainer splitContainer = null!;
+        private SplitContainer gridSplitContainer = null!;
+        private PictureBox picturePreview = null!;
+        private Label lblPreviewInfo = null!;
+        private Panel previewPanel = null!;
 
         // Data
         private List<FileItem> files = new();
@@ -53,6 +61,7 @@ namespace YtdOptimizerGUI
         private int targetSize = 512;
         private string texconvPath = "";
         private bool isProcessing = false;
+        private string[] selectedFilePaths = Array.Empty<string>();
 
         private static readonly string[] SupportedExtensions = { ".ytd", ".ydd", ".ydr", ".yft" };
 
@@ -130,13 +139,16 @@ namespace YtdOptimizerGUI
             };
 
             // Row 1: Buttons
-            btnSelectFolder = CreateButton("📂 Carpeta Entrada", 15, 15, 160);
+            btnSelectFiles = CreateButton("📄 Archivos", 15, 15, 110);
+            btnSelectFiles.Click += BtnSelectFiles_Click;
+
+            btnSelectFolder = CreateButton("📂 Carpeta", 133, 15, 110);
             btnSelectFolder.Click += BtnSelectFolder_Click;
 
-            btnSelectOutput = CreateButton("📁 Carpeta Salida", 185, 15, 160);
+            btnSelectOutput = CreateButton("📁 Salida", 251, 15, 110);
             btnSelectOutput.Click += BtnSelectOutput_Click;
 
-            btnScan = CreateButton("🔍 Escanear", 355, 15, 120);
+            btnScan = CreateButton("🔍 Escanear", 369, 15, 110);
             btnScan.Click += BtnScan_Click;
             btnScan.Enabled = false;
 
@@ -206,7 +218,7 @@ namespace YtdOptimizerGUI
             };
 
             topPanel.Controls.AddRange(new Control[] {
-                btnSelectFolder, btnSelectOutput, btnScan,
+                btnSelectFiles, btnSelectFolder, btnSelectOutput, btnScan,
                 lblTargetSize, cmbTargetSize, chkSelectAll,
                 lblInput, lblInputPath, lblOutput, lblOutputPath
             });
@@ -216,10 +228,7 @@ namespace YtdOptimizerGUI
             {
                 Dock = DockStyle.Fill,
                 Orientation = Orientation.Horizontal,
-                SplitterDistance = 400,
-                BackColor = BackgroundColor,
-                Panel1MinSize = 200,
-                Panel2MinSize = 100
+                BackColor = BackgroundColor
             };
 
             // DataGridView for files
@@ -279,8 +288,76 @@ namespace YtdOptimizerGUI
             logPanel.Controls.Add(txtLog);
             logPanel.Controls.Add(lblLog);
 
-            splitContainer.Panel1.Controls.Add(gridFiles);
+            // Preview panel (right side of grid)
+            previewPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = PanelColor,
+                Padding = new Padding(10)
+            };
+
+            var lblPreviewTitle = new Label
+            {
+                Text = "Vista previa",
+                Dock = DockStyle.Top,
+                Height = 22,
+                ForeColor = TextColor,
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold)
+            };
+
+            lblPreviewInfo = new Label
+            {
+                Text = "Seleccione una textura para previsualizar",
+                Dock = DockStyle.Bottom,
+                Height = 40,
+                ForeColor = SecondaryTextColor,
+                Font = new Font("Segoe UI", 8F),
+                TextAlign = ContentAlignment.MiddleCenter
+            };
+
+            picturePreview = new PictureBox
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(20, 20, 20),
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BorderStyle = BorderStyle.FixedSingle
+            };
+
+            previewPanel.Controls.Add(picturePreview);
+            previewPanel.Controls.Add(lblPreviewInfo);
+            previewPanel.Controls.Add(lblPreviewTitle);
+
+            // Vertical split: grid left, preview right
+            gridSplitContainer = new SplitContainer
+            {
+                Dock = DockStyle.Fill,
+                Orientation = Orientation.Vertical,
+                BackColor = BackgroundColor
+            };
+            // Set SplitterDistance after adding to parent to avoid size constraint errors
+            gridSplitContainer.Panel1.Controls.Add(gridFiles);
+            gridSplitContainer.Panel2.Controls.Add(previewPanel);
+
+            splitContainer.Panel1.Controls.Add(gridSplitContainer);
             splitContainer.Panel2.Controls.Add(logPanel);
+
+            // Now it's safe to set splitter distance and min sizes (parent has real size)
+            this.Load += (s, ev) =>
+            {
+                try
+                {
+                    splitContainer.Panel1MinSize = 200;
+                    splitContainer.Panel2MinSize = 100;
+                    splitContainer.SplitterDistance = (int)(splitContainer.Height * 0.7);
+
+                    gridSplitContainer.Panel1MinSize = 200;
+                    gridSplitContainer.Panel2MinSize = 150;
+                    gridSplitContainer.SplitterDistance = (int)(gridSplitContainer.Width * 0.65);
+                }
+                catch { }
+            };
+
+            gridFiles.SelectionChanged += GridFiles_SelectionChanged;
 
             // Bottom Panel
             bottomPanel = new Panel
@@ -456,15 +533,45 @@ namespace YtdOptimizerGUI
             Log("ADVERTENCIA: texconv.exe no encontrado. Asegúrese de colocarlo junto al ejecutable.", WarningColor);
         }
 
-        private void BtnSelectFolder_Click(object? sender, EventArgs e)
+        private async void BtnSelectFiles_Click(object? sender, EventArgs e)
+        {
+            using var dialog = new OpenFileDialog
+            {
+                Title = "Seleccionar archivos de textura",
+                Filter = "Archivos de textura GTA V|*.ytd;*.ydd;*.ydr;*.yft|Todos los archivos|*.*",
+                Multiselect = true
+            };
+
+            if (dialog.ShowDialog() == DialogResult.OK && dialog.FileNames.Length > 0)
+            {
+                selectedFilePaths = dialog.FileNames;
+                inputFolder = Path.GetDirectoryName(dialog.FileNames[0]) ?? "";
+                lblInputPath.Text = $"{selectedFilePaths.Length} archivo(s) seleccionado(s)";
+                lblInputPath.ForeColor = TextColor;
+                btnScan.Enabled = true;
+
+                if (string.IsNullOrEmpty(outputFolder))
+                {
+                    outputFolder = Path.Combine(inputFolder, "optimized");
+                    lblOutputPath.Text = outputFolder;
+                    lblOutputPath.ForeColor = TextColor;
+                }
+
+                Log($"{selectedFilePaths.Length} archivos seleccionados");
+                await RunScanAsync();
+            }
+        }
+
+        private async void BtnSelectFolder_Click(object? sender, EventArgs e)
         {
             using var dialog = new FolderBrowserDialog
             {
-                Description = "Seleccione la carpeta con archivos YTD/YDD/YDR/YFT"
+                Description = "Seleccione la carpeta que contiene archivos YTD/YDD/YDR/YFT.\n\nNota: Este diálogo solo muestra carpetas. Es normal que la carpeta aparezca vacía — los archivos se detectarán automáticamente al seleccionarla."
             };
 
             if (dialog.ShowDialog() == DialogResult.OK)
             {
+                selectedFilePaths = Array.Empty<string>();
                 inputFolder = dialog.SelectedPath;
                 lblInputPath.Text = inputFolder;
                 lblInputPath.ForeColor = TextColor;
@@ -478,6 +585,9 @@ namespace YtdOptimizerGUI
                 }
 
                 Log($"Carpeta seleccionada: {inputFolder}");
+
+                // Auto-scan the folder so files appear immediately
+                await RunScanAsync();
             }
         }
 
@@ -534,14 +644,21 @@ namespace YtdOptimizerGUI
 
         private async void BtnScan_Click(object? sender, EventArgs e)
         {
-            if (string.IsNullOrEmpty(inputFolder) || !Directory.Exists(inputFolder))
+            if (selectedFilePaths.Length == 0 && (string.IsNullOrEmpty(inputFolder) || !Directory.Exists(inputFolder)))
             {
-                MessageBox.Show("Por favor seleccione una carpeta válida.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Por favor seleccione archivos o una carpeta.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
+            await RunScanAsync();
+        }
+
+        private async Task RunScanAsync()
+        {
             btnScan.Enabled = false;
             btnOptimize.Enabled = false;
+            btnSelectFolder.Enabled = false;
+            btnSelectFiles.Enabled = false;
             gridFiles.Rows.Clear();
             files.Clear();
 
@@ -553,6 +670,8 @@ namespace YtdOptimizerGUI
             PopulateGrid();
             UpdateStats();
 
+            btnSelectFolder.Enabled = true;
+            btnSelectFiles.Enabled = true;
             btnScan.Enabled = true;
             btnOptimize.Enabled = files.Count > 0;
             lblStatus.Text = $"Escaneo completado: {files.Count} archivos encontrados";
@@ -562,9 +681,20 @@ namespace YtdOptimizerGUI
         private void ScanFiles()
         {
             var allFiles = new List<string>();
-            foreach (var ext in SupportedExtensions)
+
+            if (selectedFilePaths.Length > 0)
             {
-                allFiles.AddRange(Directory.GetFiles(inputFolder, $"*{ext}", SearchOption.AllDirectories));
+                // Use individually selected files
+                allFiles.AddRange(selectedFilePaths.Where(f =>
+                    SupportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant())));
+            }
+            else
+            {
+                // Scan entire folder
+                foreach (var ext in SupportedExtensions)
+                {
+                    allFiles.AddRange(Directory.GetFiles(inputFolder, $"*{ext}", SearchOption.AllDirectories));
+                }
             }
 
             foreach (var filePath in allFiles)
@@ -1194,6 +1324,167 @@ namespace YtdOptimizerGUI
             }
 
             return changed;
+        }
+
+        private void GridFiles_SelectionChanged(object? sender, EventArgs e)
+        {
+            if (gridFiles.SelectedRows.Count == 0)
+            {
+                picturePreview.Image?.Dispose();
+                picturePreview.Image = null;
+                lblPreviewInfo.Text = "Seleccione una textura para previsualizar";
+                return;
+            }
+
+            var row = gridFiles.SelectedRows[0];
+            if (row.Tag is not TextureItem tex)
+            {
+                picturePreview.Image?.Dispose();
+                picturePreview.Image = null;
+                lblPreviewInfo.Text = "Sin datos de textura";
+                return;
+            }
+
+            if (tex.Width <= 0 || tex.Height <= 0)
+            {
+                picturePreview.Image?.Dispose();
+                picturePreview.Image = null;
+                lblPreviewInfo.Text = $"{tex.TextureName}\nSin dimensiones (embedded)";
+                Log($"Preview: {tex.TextureName} sin dimensiones (W={tex.Width}, H={tex.Height})", SecondaryTextColor);
+                return;
+            }
+
+            try
+            {
+                Log($"Preview: Cargando {tex.TextureName} ({tex.Width}x{tex.Height}, {tex.Format})...", SecondaryTextColor);
+                var bitmap = GetTextureBitmap(tex);
+                if (bitmap != null)
+                {
+                    picturePreview.Image?.Dispose();
+                    picturePreview.Image = bitmap;
+                    lblPreviewInfo.Text = $"{tex.TextureName}\n{tex.Width}x{tex.Height} | {tex.Format}";
+                    Log($"Preview: OK - {bitmap.Width}x{bitmap.Height}", SuccessColor);
+                }
+                else
+                {
+                    picturePreview.Image?.Dispose();
+                    picturePreview.Image = null;
+                    lblPreviewInfo.Text = $"{tex.TextureName}\nNo se pudo generar preview";
+                    Log($"Preview: GetTextureBitmap devolvió null para {tex.TextureName}", WarningColor);
+                }
+            }
+            catch (Exception ex)
+            {
+                picturePreview.Image?.Dispose();
+                picturePreview.Image = null;
+                lblPreviewInfo.Text = "Error al generar vista previa";
+                Log($"Preview ERROR: {ex.Message}", ErrorColor);
+            }
+        }
+
+        private Bitmap? GetTextureBitmap(TextureItem texItem)
+        {
+            byte[] data = File.ReadAllBytes(texItem.FilePath);
+            var ext = Path.GetExtension(texItem.FilePath).ToLowerInvariant();
+
+            Texture? texture = null;
+
+            switch (ext)
+            {
+                case ".ytd":
+                    var ytd = new YtdFile();
+                    ytd.Load(data);
+                    if (ytd.TextureDict?.Textures?.data_items != null)
+                    {
+                        texture = ytd.TextureDict.Textures.data_items
+                            .FirstOrDefault(t => t?.Name == texItem.TextureName);
+                        if (texture == null)
+                        {
+                            Log($"  Preview: Textura '{texItem.TextureName}' no encontrada en YTD. Disponibles: {string.Join(", ", ytd.TextureDict.Textures.data_items.Where(t => t != null).Select(t => t.Name))}", WarningColor);
+                            // Try first available texture as fallback
+                            texture = ytd.TextureDict.Textures.data_items.FirstOrDefault(t => t != null);
+                        }
+                    }
+                    else
+                    {
+                        Log($"  Preview: YTD sin diccionario de texturas", WarningColor);
+                    }
+                    break;
+
+                case ".ydd":
+                    var ydd = new YddFile();
+                    ydd.Load(data);
+                    if (ydd.DrawableDict?.Drawables?.data_items != null)
+                    {
+                        foreach (var drawable in ydd.DrawableDict.Drawables.data_items)
+                        {
+                            if (drawable?.ShaderGroup?.TextureDictionary?.Textures?.data_items != null)
+                            {
+                                texture = drawable.ShaderGroup.TextureDictionary.Textures.data_items.FirstOrDefault(t => t != null);
+                                if (texture != null) break;
+                            }
+                        }
+                    }
+                    break;
+
+                case ".ydr":
+                    var ydr = new YdrFile();
+                    ydr.Load(data);
+                    if (ydr.Drawable?.ShaderGroup?.TextureDictionary?.Textures?.data_items != null)
+                    {
+                        texture = ydr.Drawable.ShaderGroup.TextureDictionary.Textures.data_items.FirstOrDefault(t => t != null);
+                    }
+                    break;
+
+                case ".yft":
+                    var yft = new YftFile();
+                    yft.Load(data);
+                    if (yft.Fragment?.Drawable?.ShaderGroup?.TextureDictionary?.Textures?.data_items != null)
+                    {
+                        texture = yft.Fragment.Drawable.ShaderGroup.TextureDictionary.Textures.data_items.FirstOrDefault(t => t != null);
+                    }
+                    break;
+            }
+
+            if (texture == null)
+            {
+                Log($"  Preview: No se encontró ninguna textura en {texItem.FileName}", WarningColor);
+                return null;
+            }
+
+            if (texture.Data?.FullData == null)
+            {
+                Log($"  Preview: Textura '{texture.Name}' sin datos de píxeles", WarningColor);
+                return null;
+            }
+
+            if (texture.Width == 0 || texture.Height == 0)
+            {
+                Log($"  Preview: Textura '{texture.Name}' tiene dimensiones 0", WarningColor);
+                return null;
+            }
+
+            Log($"  Preview: Decodificando '{texture.Name}' {texture.Width}x{texture.Height} formato={texture.Format}", SecondaryTextColor);
+
+            byte[] pixels = DDSIO.GetPixels(texture, 0);
+            if (pixels == null)
+            {
+                Log($"  Preview: DDSIO.GetPixels devolvió null (formato no soportado: {texture.Format})", WarningColor);
+                return null;
+            }
+
+            int w = texture.Width;
+            int h = texture.Height;
+
+            var bmp = new Bitmap(w, h, PixelFormat.Format32bppArgb);
+            var rect = new Rectangle(0, 0, w, h);
+            var bmpData = bmp.LockBits(rect, ImageLockMode.WriteOnly, bmp.PixelFormat);
+
+            int copyLen = Math.Min(pixels.Length, bmpData.Stride * h);
+            Marshal.Copy(pixels, 0, bmpData.Scan0, copyLen);
+
+            bmp.UnlockBits(bmpData);
+            return bmp;
         }
 
         private void Log(string message, Color? color = null)

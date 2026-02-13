@@ -99,11 +99,8 @@ python optimize.py input output 512
 # Navegar al proyecto GUI
 cd tools/YtdOptimizerGUI
 
-# Compilar en modo Release
-dotnet build -c Release
-
-# Publicar como ejecutable único (self-contained)
-dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:EnableCompressionInSingleFile=true -o ../../dist
+# Compilar y publicar en dist/
+dotnet publish -c Release -o ../../dist
 ```
 
 ### Estructura del Proyecto
